@@ -1,0 +1,41 @@
+FROM python:3.11-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    git \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:$PATH"
+
+COPY requirements.txt pyproject.toml ./
+
+RUN uv venv && \
+    . .venv/bin/activate && \
+    uv pip install -e ".[stt]"
+
+COPY src/ ./src/
+COPY .env.example ./.env.example
+
+RUN mkdir -p /app/models /app/voices
+
+ENV OPENCLAW_HOST=0.0.0.0
+ENV OPENCLAW_PORT=8765
+ENV OPENCLAW_STT_MODEL=base
+ENV OPENCLAW_STT_DEVICE=cpu
+ENV OPENCLAW_TTS_MODEL=chatterbox
+ENV OPENCLAW_REQUIRE_AUTH=true
+
+EXPOSE 8765
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8765/ || exit 1
+
+CMD [".venv/bin/python", "-m", "uvicorn", "src.server.main:app", "--host", "0.0.0.0", "--port", "8765"]

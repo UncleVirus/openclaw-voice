@@ -1,29 +1,33 @@
-version: '3.8'
+version: "3.8"
 
 services:
   openclaw-voice:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    container_name: openclaw-voice
     ports:
       - "8765:8765"
     environment:
-      - OPENCLAW_HOST=0.0.0.0
-      - OPENCLAW_PORT=8765
-      - OPENCLAW_STT_MODEL=${OPENCLAW_STT_MODEL:-base}
-      - OPENCLAW_STT_DEVICE=${OPENCLAW_STT_DEVICE:-cuda}
-      - OPENCLAW_REQUIRE_AUTH=${OPENCLAW_REQUIRE_AUTH:-false}
-      - OPENCLAW_MASTER_KEY=${OPENCLAW_MASTER_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      OPENCLAW_HOST: "0.0.0.0"
+      OPENCLAW_PORT: "8765"
+
+      OPENCLAW_GATEWAY_URL: "http://172.17.0.1:18789"
+      OPENCLAW_GATEWAY_TOKEN: "ae49fd879155471b4562a6e829ad4a9f9ec117ce3b0e2a17"
+
+      OPENCLAW_STT_MODEL: "base"
+      OPENCLAW_STT_DEVICE: "cpu"
+
+      OPENCLAW_TTS_MODEL: "chatterbox"
+
+      OPENCLAW_REQUIRE_AUTH: "true"
+      OPENCLAW_MASTER_KEY: "bbb117e1d5cc133dbdad0c804e314611158e81a09796b844c9d8e5f886aab2fd"
+
+      OPENAI_API_KEY: ""
+      ELEVENLABS_API_KEY: ""
     volumes:
-      # Persist downloaded models
       - whisper-models:/root/.cache/huggingface
       - ./voices:/app/voices
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8765/"]
@@ -31,26 +35,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-
-  # CPU-only version (no GPU required)
-  openclaw-voice-cpu:
-    build: .
-    ports:
-      - "8766:8765"
-    environment:
-      - OPENCLAW_HOST=0.0.0.0
-      - OPENCLAW_PORT=8765
-      - OPENCLAW_STT_MODEL=${OPENCLAW_STT_MODEL:-tiny}
-      - OPENCLAW_STT_DEVICE=cpu
-      - OPENCLAW_REQUIRE_AUTH=${OPENCLAW_REQUIRE_AUTH:-false}
-      - OPENCLAW_MASTER_KEY=${OPENCLAW_MASTER_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-    volumes:
-      - whisper-models:/root/.cache/huggingface
-      - ./voices:/app/voices
-    profiles:
-      - cpu
-    restart: unless-stopped
 
 volumes:
   whisper-models:
